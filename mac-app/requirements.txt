@@ -1,0 +1,5 @@
+rumps
+pywebview
+openai-whisper
+requests
+python-dotenv

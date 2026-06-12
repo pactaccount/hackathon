@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Robin — Personal AI</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root {
+    --bg:#0d0d1a; --surface:rgba(255,255,255,0.06);
+    --surface-h:rgba(255,255,255,0.10); --border:rgba(255,255,255,0.10);
+    --accent:#7c6df0; --glow:rgba(124,109,240,0.35);
+    --green:#06d6a0; --text:#f0f0f8; --muted:rgba(240,240,248,0.5);
+  }
+  html,body { width:100%;height:100vh;background:var(--bg);
+    font-family:'Inter',-apple-system,sans-serif;color:var(--text);
+    display:flex;flex-direction:column;overflow:hidden; }
+
+  /* Header */
+  #hdr { display:flex;align-items:center;padding:13px 18px;
+    border-bottom:1px solid var(--border);gap:11px;flex-shrink:0; }
+  #logo { width:36px;height:36px;background:linear-gradient(135deg,var(--accent),#a78bfa);
+    border-radius:10px;display:flex;align-items:center;justify-content:center;
+    font-size:18px;box-shadow:0 4px 16px var(--glow);flex-shrink:0; }
+  #title { flex:1;min-width:0; }
+  #title h1 { font-size:15px;font-weight:600;letter-spacing:-.3px; }
+  #srow { display:flex;align-items:center;gap:6px;margin-top:2px; }
+  #sdot { width:6px;height:6px;border-radius:50%;background:var(--green);
+    box-shadow:0 0 8px var(--green);animation:pulse 2s ease-in-out infinite; }
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+  #stxt { font-size:11px;color:var(--muted); }
+
+  /* Wake word ring around logo */
+  #logo.waking { animation:ring 1s ease-in-out infinite; }
+  @keyframes ring {
+    0%,100% { box-shadow:0 4px 16px var(--glow); }
+    50%      { box-shadow:0 0 0 6px rgba(124,109,240,.4),0 4px 24px var(--glow); }
+  }
+
+  .hbtn { background:var(--surface);border:1px solid var(--border);border-radius:8px;
+    color:var(--muted);cursor:pointer;padding:6px 12px;font-size:12px;font-family:inherit;
+    transition:all .15s;white-space:nowrap;flex-shrink:0; }
+  .hbtn:hover { background:var(--surface-h);color:var(--text); }
+  .hbtn.on { background:rgba(124,109,240,.25);color:var(--accent);
+    border-color:rgba(124,109,240,.5); }
+
+  /* Wake badge */
+  #wake-badge { display:none;align-items:center;gap:6px;background:rgba(124,109,240,.15);
+    border:1px solid rgba(124,109,240,.4);border-radius:8px;padding:5px 12px;
+    font-size:12px;color:var(--accent);flex-shrink:0; }
+  #wake-badge.show { display:flex; }
+  .wake-dot { width:7px;height:7px;border-radius:50%;background:var(--accent);
+    animation:pulse .8s ease-in-out infinite; }
+
+  /* Messages */
+  #msgs { flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;
+    gap:13px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.08) transparent; }
+  .msg { display:flex;gap:10px;animation:up .2s ease-out; }
+  .msg.user { flex-direction:row-reverse; }
+  @keyframes up{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  .av { width:30px;height:30px;border-radius:9px;display:flex;align-items:center;
+    justify-content:center;font-size:14px;flex-shrink:0;margin-top:2px; }
+  .msg.robin .av { background:linear-gradient(135deg,var(--accent),#a78bfa); }
+  .msg.user  .av { background:rgba(255,255,255,.10); }
+  .bub { max-width:76%;padding:10px 14px;border-radius:14px;
+    font-size:13.5px;line-height:1.55; }
+  .msg.robin .bub { background:rgba(255,255,255,.05);border:1px solid var(--border);
+    border-top-left-radius:4px; }
+  .msg.user .bub { background:rgba(124,109,240,.2);border:1px solid rgba(124,109,240,.3);
+    border-top-right-radius:4px; }
+  .meta { font-size:10px;color:var(--muted);margin-top:4px; }
+  .msg.user .meta { text-align:right; }
+  .tag { display:inline-block;background:rgba(124,109,240,.15);
+    border:1px solid rgba(124,109,240,.3);color:var(--accent);
+    border-radius:5px;padding:1px 7px;font-size:10px; }
+  .thinking { display:flex;gap:5px;align-items:center;padding:12px 14px; }
+  .dot { width:6px;height:6px;border-radius:50%;background:var(--accent); }
+  .dot:nth-child(1){animation:b .9s 0s infinite}
+  .dot:nth-child(2){animation:b .9s .2s infinite}
+  .dot:nth-child(3){animation:b .9s .4s infinite}
+  @keyframes b{0%,80%,100%{transform:scale(.6);opacity:.4}40%{transform:scale(1);opacity:1}}
+
+  /* Chips */
+  #chips { display:flex;gap:6px;padding:0 18px 10px;flex-wrap:wrap;flex-shrink:0; }
+  .chip { background:var(--surface);border:1px solid var(--border);border-radius:20px;
+    padding:5px 12px;font-size:11.5px;color:var(--muted);cursor:pointer;
+    transition:all .15s;white-space:nowrap; }
+  .chip:hover { background:var(--surface-h);color:var(--text);
+    border-color:rgba(124,109,240,.4); }
+
+  /* Input */
+  #inp-area { padding:10px 14px 14px;border-top:1px solid var(--border);
+    display:flex;gap:8px;align-items:flex-end;flex-shrink:0; }
+  #inp-wrap { flex:1;background:var(--surface);border:1px solid var(--border);
+    border-radius:12px;display:flex;align-items:flex-end;padding:9px 12px;gap:8px;
+    transition:border-color .15s; }
+  #inp-wrap:focus-within { border-color:var(--accent); }
+  #inp { flex:1;background:none;border:none;outline:none;color:var(--text);
+    font-family:inherit;font-size:13.5px;resize:none;max-height:120px;line-height:1.4; }
+  #inp::placeholder { color:var(--muted); }
+  #mic { background:none;border:none;cursor:pointer;color:var(--muted);
+    font-size:18px;padding:2px;border-radius:6px;transition:all .15s;line-height:1; }
+  #mic:hover { color:var(--accent);background:rgba(124,109,240,.15); }
+  #mic.on  { color:#ef4444;animation:rec 1s ease-in-out infinite; }
+  @keyframes rec{0%,100%{opacity:1}50%{opacity:.35}}
+  #send { width:40px;height:40px;background:linear-gradient(135deg,var(--accent),#a78bfa);
+    border:none;border-radius:11px;color:#fff;font-size:17px;cursor:pointer;
+    transition:all .15s;display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;box-shadow:0 4px 14px var(--glow); }
+  #send:hover { transform:scale(1.05);box-shadow:0 6px 20px var(--glow); }
+  #send:active { transform:scale(.96); }
+  #send:disabled { opacity:.4;cursor:not-allowed;transform:none; }
+
+  /* Welcome */
+  #welcome { display:flex;flex-direction:column;align-items:center;
+    justify-content:center;gap:14px;padding:28px 24px;text-align:center; }
+  #wico { width:70px;height:70px;background:linear-gradient(135deg,var(--accent),#a78bfa);
+    border-radius:20px;display:flex;align-items:center;justify-content:center;
+    font-size:35px;box-shadow:0 8px 32px var(--glow);
+    animation:float 3s ease-in-out infinite; }
+  @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+  #welcome h2 { font-size:20px;font-weight:700;letter-spacing:-.5px; }
+  #welcome p  { font-size:13px;color:var(--muted);line-height:1.7; }
+  .sug { background:var(--surface);border:1px solid var(--border);border-radius:11px;
+    padding:9px 16px;font-size:13px;color:var(--muted);cursor:pointer;
+    transition:all .15s;width:100%;text-align:left; }
+  .sug:hover { background:var(--surface-h);color:var(--text);border-color:var(--accent); }
+</style>
+</head>
+<body>
+
+<div id="hdr">
+  <div id="logo">🤖</div>
+  <div id="title">
+    <h1>Robin</h1>
+    <div id="srow"><div id="sdot"></div><span id="stxt">Connecting…</span></div>
+  </div>
+  <div id="wake-badge"><div class="wake-dot"></div> Listening…</div>
+  <button class="hbtn" id="wake-btn" onclick="toggleWake()" title="Say 'Hey Robin' to activate">👂 Hey Robin</button>
+  <button class="hbtn" id="smart-btn" onclick="toggleSmart()">⚡ Smart</button>
+  <button class="hbtn" onclick="clearChat()">✕</button>
+</div>
+
+<div id="msgs">
+  <div id="welcome">
+    <div id="wico">🤖</div>
+    <h2>Hey, I'm Robin</h2>
+    <p>Your personal AI on this Mac.<br/>Say <strong>"Hey Robin"</strong> or click below.</p>
+    <button class="sug" onclick="sendQ('What can you do for me?')">💬 What can you do?</button>
+    <button class="sug" onclick="sendQ('What\'s on my calendar today?')">📅 What's on my calendar today?</button>
+    <button class="sug" onclick="sendQ('Set my volume to 40%')">🔊 Set volume to 40%</button>
+    <button class="sug" onclick="sendQ('Open Safari')">🌐 Open Safari</button>
+    <button class="sug" onclick="sendQ('Get my battery status')">🔋 Battery status</button>
+  </div>
+</div>
+
+<div id="chips">
+  <div class="chip" onclick="sendQ('What\'s on my calendar today?')">📅 Calendar</div>
+  <div class="chip" onclick="sendQ('Read my latest emails')">📧 Email</div>
+  <div class="chip" onclick="sendQ('Get battery status')">🔋 Battery</div>
+  <div class="chip" onclick="sendQ('Take a screenshot')">📸 Screenshot</div>
+  <div class="chip" onclick="sendQ('Search for AI news today')">🔍 AI News</div>
+</div>
+
+<div id="inp-area">
+  <div id="inp-wrap">
+    <textarea id="inp" rows="1"
+      placeholder="Ask Robin… or say 'Hey Robin'"
+      onkeydown="onKey(event)" oninput="resize(this)"></textarea>
+    <button id="mic" onclick="toggleMic()" title="Click to speak">🎙</button>
+  </div>
+  <button id="send" onclick="send()">↑</button>
+</div>
+
+<script>
+// ── Setup ────────────────────────────────────────────────────────────────────
+const params  = new URLSearchParams(location.search);
+const USER_ID = params.get('user') || 'default';
+const API     = location.origin;
+
+let smartMode   = false;
+let isSending   = false;
+let isListening = false;   // push-to-talk mic
+let wakeActive  = false;   // hey robin always-on mode
+let wakeRec     = null;    // wake word SpeechRecognition instance
+let cmdRec      = null;    // command SpeechRecognition instance
+
+const msgsEl = document.getElementById('msgs');
+const inpEl  = document.getElementById('inp');
+const sendEl = document.getElementById('send');
+
+// ── Status ────────────────────────────────────────────────────────────────────
+function setStatus(t, c) {
+  document.getElementById('stxt').textContent = t;
+  const dot = document.getElementById('sdot');
+  dot.style.background   = c || 'var(--green)';
+  dot.style.boxShadow    = `0 0 8px ${c||'var(--green)'}`;
+}
+
+// ── Backend health check ──────────────────────────────────────────────────────
+(async () => {
+  try {
+    const r = await fetch(`${API}/health`,{signal:AbortSignal.timeout(4000)});
+    const d = await r.json();
+    setStatus(d.status==='ok' ? 'Pioneer AI · Ready' : 'Backend error', d.status==='ok' ? 'var(--green)' : '#f59e0b');
+  } catch {
+    setStatus('Backend offline — start uvicorn','#ef4444');
+  }
+})();
+
+// ── Smart mode ────────────────────────────────────────────────────────────────
+function toggleSmart() {
+  smartMode = !smartMode;
+  const b = document.getElementById('smart-btn');
+  b.classList.toggle('on', smartMode);
+  b.textContent = smartMode ? '⚡ Claude' : '⚡ Smart';
+  setStatus(smartMode ? 'Claude Sonnet — Smart Mode' : 'Pioneer AI · Ready',
+            smartMode ? '#a78bfa' : 'var(--green)');
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function resize(el) { el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,120)+'px'; }
+function onKey(e)   { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();} }
+function sendQ(m)   { inpEl.value=m; send(); }
+function rmWelcome(){ document.getElementById('welcome')?.remove(); }
+
+function addMsg(role, content, meta) {
+  rmWelcome();
+  const d = document.createElement('div');
+  d.className = `msg ${role}`;
+  d.innerHTML = `<div class="av">${role==='robin'?'🤖':'👤'}</div>
+    <div>
+      <div class="bub">${content.replace(/\n/g,'<br/>')}</div>
+      ${meta?`<div class="meta">${meta}</div>`:''}
+    </div>`;
+  msgsEl.appendChild(d);
+  msgsEl.scrollTop = msgsEl.scrollHeight;
+}
+
+function showThinking() {
+  rmWelcome();
+  const d = document.createElement('div');
+  d.className='msg robin'; d.id='thinking';
+  d.innerHTML=`<div class="av">🤖</div>
+    <div class="bub thinking"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>`;
+  msgsEl.appendChild(d);
+  msgsEl.scrollTop = msgsEl.scrollHeight;
+}
+
+// ── TTS ───────────────────────────────────────────────────────────────────────
+function speak(text) {
+  if (!window.speechSynthesis) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text.replace(/[*`#]/g,'').substring(0,300));
+  const voices = speechSynthesis.getVoices();
+  u.voice = voices.find(v=>v.name==='Samantha') || voices.find(v=>v.lang==='en-US') || voices[0];
+  u.rate = 1.05;
+  speechSynthesis.speak(u);
+}
+
+// ── Send message ──────────────────────────────────────────────────────────────
+async function send() {
+  const msg = inpEl.value.trim();
+  if (!msg || isSending) return;
+  isSending = true;
+  inpEl.value = ''; inpEl.style.height='auto';
+  sendEl.disabled = true;
+  setStatus('Thinking…','#f59e0b');
+  addMsg('user', msg);
+  showThinking();
+
+  try {
+    const r = await fetch(`${API}/chat`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({user_id:USER_ID, message:msg, smart_mode:smartMode})
+    });
+
+    // Handle non-JSON responses gracefully
+    const text = await r.text();
+    let data;
+    try { data = JSON.parse(text); }
+    catch(e) {
+      data = {response:`Server error (${r.status}): ${text.substring(0,200)}`, provider:'error', duration_ms:0};
+    }
+
+    document.getElementById('thinking')?.remove();
+    const ms   = Math.round(data.duration_ms||0);
+    const prov = data.provider||'pioneer';
+    const tool = data.tool_executed ? ` · 🔧 ${data.tool_executed}` : '';
+    const badge = `<span class="tag">${prov}${ms?' · '+ms+'ms':''}${tool}</span>`;
+    addMsg('robin', data.response||'No response.', badge);
+    setStatus('Ready','var(--green)');
+    speak(data.response||'');
+
+  } catch(e) {
+    document.getElementById('thinking')?.remove();
+    addMsg('robin',`❌ Network error: ${e.message}. Is uvicorn running on port 8000?`,'');
+    setStatus('Connection failed','#ef4444');
+  }
+
+  isSending = false;
+  sendEl.disabled = false;
+  inpEl.focus();
+}
+
+// ── Mic (MediaRecorder → backend Whisper — works in ALL browsers) ─────────────
+let mediaRecorder = null;
+let audioChunks   = [];
+let micStream     = null;
+
+async function getMicStream() {
+  try {
+    return await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+  } catch(e) {
+    if (e.name === 'NotAllowedError') {
+      addMsg('robin', '🎙 Microphone permission denied.\n\nFix: In your browser address bar, click the 🔒 lock icon → Microphone → Allow.\nOr go to System Settings → Privacy & Security → Microphone → allow this browser.', '');
+    } else {
+      addMsg('robin', `🎙 Microphone error: ${e.message}`, '');
+    }
+    return null;
+  }
+}
+
+async function toggleMic() {
+  const btn = document.getElementById('mic');
+  if (!isListening) {
+    setStatus('Requesting mic…', '#f59e0b');
+    micStream = await getMicStream();
+    if (!micStream) { setStatus('Ready','var(--green)'); return; }
+
+    audioChunks  = [];
+    mediaRecorder = new MediaRecorder(micStream);
+    mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.push(e.data); };
+    mediaRecorder.onstop = async () => {
+      micStream.getTracks().forEach(t => t.stop());
+      const blob = new Blob(audioChunks, { type: 'audio/webm' });
+      await transcribeAndSend(blob);
+    };
+    mediaRecorder.start(100); // collect data every 100ms
+
+    isListening = true;
+    btn.classList.add('on'); btn.textContent = '⏹';
+    setStatus('🔴 Recording… click ⏹ to send', '#ef4444');
+  } else {
+    mediaRecorder?.stop();
+    isListening = false;
+    btn.classList.remove('on'); btn.textContent = '🎙';
+    setStatus('Transcribing…', '#f59e0b');
+  }
+}
+
+async function transcribeAndSend(blob) {
+  try {
+    const form = new FormData();
+    form.append('audio', blob, 'recording.webm');
+    const r    = await fetch(`${API}/transcribe`, { method: 'POST', body: form });
+    const data = await r.json();
+    if (data.text && data.text.trim()) {
+      inpEl.value = data.text.trim();
+      resize(inpEl);
+      setStatus('Ready', 'var(--green)');
+      send();
+    } else {
+      setStatus(data.error || 'Nothing heard — try again', '#f59e0b');
+      setTimeout(() => setStatus('Ready','var(--green)'), 3000);
+    }
+  } catch(e) {
+    setStatus(`Transcription failed: ${e.message}`, '#ef4444');
+    setTimeout(() => setStatus('Ready','var(--green)'), 4000);
+  }
+}
+
+// ── "Hey Robin" wake word ─────────────────────────────────────────────────────
+// Uses Web Speech API for continuous lightweight wake detection,
+// then switches to MediaRecorder for the actual command (higher quality).
+const WAKE_PHRASES = ['hey robin','hi robin','ok robin','hello robin'];
+
+function toggleWake() {
+  if (!wakeActive) startWake();
+  else stopWake();
+}
+
+async function startWake() {
+  // First request mic permission so the user sees the prompt once
+  const testStream = await getMicStream();
+  if (!testStream) return;
+  testStream.getTracks().forEach(t => t.stop()); // release, we'll re-acquire later
+
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    addMsg('robin', '⚠️ Wake word needs Chrome or Safari. Use the 🎙 button instead for voice.', '');
+    return;
+  }
+
+  wakeActive = true;
+  document.getElementById('wake-btn').classList.add('on');
+  document.getElementById('wake-btn').textContent = '👂 Active';
+  document.getElementById('wake-badge').classList.add('show');
+  document.getElementById('logo').classList.add('waking');
+  setStatus('Listening for "Hey Robin"…','var(--accent)');
+
+  function listenForWake() {
+    if (!wakeActive) return;
+    wakeRec = new SR();
+    wakeRec.lang = 'en-US';
+    wakeRec.continuous = false; // false is more reliable across browsers
+    wakeRec.interimResults = true;
+    wakeRec.onresult = (e) => {
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript.toLowerCase().trim();
+        if (WAKE_PHRASES.some(p => t.includes(p))) {
+          wakeDetected(); return;
+        }
+      }
+    };
+    wakeRec.onerror  = (e) => { console.warn('Wake error:', e.error); };
+    wakeRec.onend    = () => { if (wakeActive) setTimeout(listenForWake, 200); };
+    try { wakeRec.start(); } catch(e) { if (wakeActive) setTimeout(listenForWake, 500); }
+  }
+  listenForWake();
+}
+
+function stopWake() {
+  wakeActive = false;
+  try { wakeRec?.stop(); } catch(e) {}
+  wakeRec = null;
+  document.getElementById('wake-btn').classList.remove('on');
+  document.getElementById('wake-btn').textContent = '👂 Hey Robin';
+  document.getElementById('wake-badge').classList.remove('show');
+  document.getElementById('logo').classList.remove('waking');
+  setStatus('Ready','var(--green)');
+}
+
+async function wakeDetected() {
+  try { wakeRec?.stop(); } catch(e) {}
+  
+  // Visual + audio feedback
+  const logo = document.getElementById('logo');
+  logo.textContent = '✨';
+  setTimeout(() => { logo.textContent = '🤖'; }, 500);
+  setStatus('🎙 Listening for command…','#a78bfa');
+
+  // Speak "Yes?" via backend (uses macOS Samantha voice)
+  fetch(`${API}/speak`, {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({text: 'Yes?'})}).catch(()=>{});
+
+  // Record the command via MediaRecorder
+  await new Promise(r => setTimeout(r, 400)); // brief pause after "Yes?"
+  micStream = await getMicStream();
+  if (!micStream) { if (wakeActive) setTimeout(() => { startWakeLoop(); }, 500); return; }
+
+  audioChunks   = [];
+  mediaRecorder = new MediaRecorder(micStream);
+  mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.push(e.data); };
+  mediaRecorder.onstop = async () => {
+    micStream.getTracks().forEach(t => t.stop());
+    const blob = new Blob(audioChunks, { type: 'audio/webm' });
+    await transcribeAndSend(blob);
+    // Resume wake listening after command completes
+    if (wakeActive) {
+      setTimeout(() => {
+        logo.style.background = '';
+        setStatus('Listening for "Hey Robin"…','var(--accent)');
+        startWakeLoop();
+      }, 1500);
+    }
+  };
+  mediaRecorder.start(100);
+
+  // Auto-stop after 8 seconds of silence
+  setTimeout(() => {
+    if (mediaRecorder?.state === 'recording') {
+      mediaRecorder.stop();
+      isListening = false;
+      document.getElementById('mic').classList.remove('on');
+      document.getElementById('mic').textContent = '🎙';
+    }
+  }, 8000);
+}
+
+function startWakeLoop() {
+  if (!wakeActive) return;
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return;
+  wakeRec = new SR();
+  wakeRec.lang = 'en-US';
+  wakeRec.continuous = false;
+  wakeRec.interimResults = true;
+  wakeRec.onresult = (e) => {
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const t = e.results[i][0].transcript.toLowerCase().trim();
+      if (WAKE_PHRASES.some(p => t.includes(p))) { wakeDetected(); return; }
+    }
+  };
+  wakeRec.onerror = (e) => { console.warn('Wake:', e.error); };
+  wakeRec.onend   = () => { if (wakeActive) setTimeout(startWakeLoop, 200); };
+  try { wakeRec.start(); } catch(e) {}
+}
+
+// ── Clear ─────────────────────────────────────────────────────────────────────
+function clearChat() {
+  msgsEl.innerHTML = `<div id="welcome">
+    <div id="wico">🤖</div><h2>Hey, I'm Robin</h2>
+    <p>Say <strong>"Hey Robin"</strong> or type below.</p>
+    <button class="sug" onclick="sendQ('What can you do?')">💬 What can you do?</button>
+    <button class="sug" onclick="sendQ('What\\'s on my calendar today?')">📅 Calendar</button>
+    <button class="sug" onclick="sendQ('Set my volume to 40%')">🔊 Set volume to 40%</button>
+    <button class="sug" onclick="sendQ('Open Safari')">🌐 Open Safari</button>
+  </div>`;
+  setStatus('Ready','var(--green)');
+}
+
+inpEl.focus();
+</script>
+</body>
+</html>
