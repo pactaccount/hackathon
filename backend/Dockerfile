@@ -5,10 +5,12 @@ WORKDIR /app
 # Install ffmpeg for Whisper audio processing
 RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
+# Install Python dependencies
+COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+# Copy backend source
+COPY backend/ .
 
 EXPOSE 8000
 
