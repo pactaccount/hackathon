@@ -1,10 +1,12 @@
 services:
   - type: web
     name: robin-backend
-    env: docker
-    dockerfilePath: ./backend/Dockerfile
-    dockerContext: .
+    env: python
+    region: oregon
     plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     envVars:
       # ── LLM ──────────────────────────────────────────
