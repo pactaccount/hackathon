@@ -52,9 +52,7 @@ class ProfileUpdateRequest(BaseModel):
     key: str
     value: str
 
-
-UI_HTML_PATH = Path(__file__).parent.parent / "mac-app" / "ui" / "index.html"
-
+UI_HTML_PATH = Path(__file__).parent / "index.html"
 
 @app.get("/ui", response_class=HTMLResponse)
 async def serve_ui():
